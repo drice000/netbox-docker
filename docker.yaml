@@ -1,0 +1,75 @@
+version: "3.8"
+
+services:
+  netbox:
+    image: docker.io/netboxcommunity/netbox:v4.4-3.4.1
+    container_name: netbox
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    env_file:
+      - env/netbox.env
+    healthcheck:
+      test: curl -fsS http://localhost:8080/login/ || exit 1
+      start_period: 300s
+      interval: 20s
+      timeout: 5s
+      retries: 10
+    networks:
+      NetBoxNet:
+        ipv4_address: 172.31.30.20
+    volumes:
+      - /share/Container/netbox/configuration:/etc/netbox/config:rw
+      - /share/Container/netbox/media:/opt/netbox/netbox/media:rw
+      - /share/Container/netbox/reports:/opt/netbox/netbox/reports:rw
+      - /share/Container/netbox/scripts:/opt/netbox/netbox/scripts:rw
+    ports:
+      - "8080:8080"   # optional, remove if using a reverse proxy
+
+  netbox-worker:
+    image: docker.io/netboxcommunity/netbox:v4.4-3.4.1
+    container_name: netbox-worker
+    depends_on:
+      netbox:
+        condition: service_healthy
+    command:
+      - /opt/netbox/venv/bin/python
+      - /opt/netbox/netbox/manage.py
+      - rqworker
+    env_file:
+      - env/netbox.env
+    healthcheck:
+      test: ps aux | grep -v grep | grep -q rqworker || exit 1
+      start_period: 60s
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    networks:
+      NetBoxNet: {}
+
+  postgres:
+    image: docker.io/postgres:16-alpine
+    container_name: netbox-postgres
+    env_file:
+      - env/postgres.env
+    healthcheck:
+      test: pg_isready -q -t 2 -d $$POSTGRES_DB -U $$POSTGRES_USER
+      start_period: 30s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - /share/Container/netbox/postgres:/var/lib/postgresql/data
+    networks:
+      NetBoxNet:
+        ipv4_address: 172.31.30.10
+
+  redis:
+    image: docker.io/valkey/valkey:8.1-alpine
+    container_name: netbox-redis
+    env_file:
+      - env/redis.env
