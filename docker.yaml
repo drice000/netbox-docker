@@ -1,38 +1,35 @@
-version: "3.9"
+version: "3.8"
 
 services:
   postgres:
-    image: docker.io/postgres:15
-    container_name: netbox-postgres
+    image: docker.io/postgres:16-alpine
     restart: unless-stopped
     env_file:
       - ./env/postgres.env
     volumes:
-      - /share/Local/netbox/postgres:/var/lib/postgresql/data
+      - /share/Container/netbox/postgres:/var/lib/postgresql/data
     networks:
       Vlan1:
         ipv4_address: 172.31.240.61
 
   redis:
-  image: redis:7
-  container_name: netbox-redis
-  restart: unless-stopped
-  env_file:
-    - ./env/redis.env
-  command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
-  volumes:
-    - /share/Container/netbox/redis:/data
-  networks:
-    Vlan1:
-      ipv4_address: 172.31.240.60
-      
+    image: docker.io/redis:7
+    restart: unless-stopped
+    env_file:
+      - ./env/redis.env
+    command: ["sh", "-c", "redis-server --requirepass \"$REDIS_PASSWORD\" --appendonly yes"]
+    volumes:
+      - /share/Container/netbox/redis:/data
+    networks:
+      Vlan1:
+        ipv4_address: 172.31.240.60
+
   redis-cache:
     image: docker.io/redis:7
-    container_name: netbox-redis-cache
     restart: unless-stopped
     env_file:
       - ./env/redis-cache.env
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    command: ["sh", "-c", "redis-server --requirepass \"$REDIS_PASSWORD\""]
     volumes:
       - /share/Container/netbox/redis-cache:/data
     networks:
@@ -41,7 +38,6 @@ services:
 
   netbox:
     image: docker.io/netboxcommunity/netbox:v4.4-3.4.1
-    container_name: netbox
     restart: unless-stopped
     depends_on:
       - postgres
@@ -50,13 +46,28 @@ services:
     env_file:
       - ./env/netbox.env
     volumes:
-      - /share/Container/netbox/media:/opt/netbox/netbox/media
-      - /share/Container/netbox/reports:/opt/netbox/netbox/reports
-      - /share/Container/netbox/scripts:/opt/netbox/netbox/scripts
       - /share/Container/netbox/configuration:/etc/netbox/config:rw
+      - /share/Container/netbox/media:/opt/netbox/netbox/media:rw
+      - /share/Container/netbox/reports:/opt/netbox/netbox/reports:rw
+      - /share/Container/netbox/scripts:/opt/netbox/netbox/scripts:rw
     networks:
       Vlan1:
         ipv4_address: 172.31.240.62
+
+  netbox-worker:
+    image: docker.io/netboxcommunity/netbox:v4.4-3.4.1
+    restart: unless-stopped
+    depends_on:
+      - netbox
+    env_file:
+      - ./env/netbox.env
+    command:
+      - /opt/netbox/venv/bin/python
+      - /opt/netbox/netbox/manage.py
+      - rqworker
+    networks:
+      Vlan1:
+        ipv4_address: 172.31.240.58
 
 networks:
   Vlan1:
