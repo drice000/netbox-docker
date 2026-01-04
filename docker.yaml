@@ -1,107 +1,64 @@
-version: "3.8"
+version: "3.9"
 
 services:
-  netbox:
-    image: docker.io/netboxcommunity/netbox:v4.4-3.4.1
-    container_name: netbox
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      redis-cache:
-        condition: service_healthy
-    env_file:
-      - env/netbox.env
-    healthcheck:
-      test: curl -fsS http://localhost:8080/login/ || exit 1
-      start_period: 300s
-      interval: 20s
-      timeout: 5s
-      retries: 10
-    networks:
-      Vlan1:
-        ipv4_address: 172.31.240.62
+  postgres:
+    image: docker.io/postgres:15
+    container_name: netbox-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: netbox
+      POSTGRES_USER: netbox
+      POSTGRES_PASSWORD: netbox
     volumes:
-      - /share/Container/netbox/configuration:/etc/netbox/config:rw
-      - /share/Container/netbox/media:/opt/netbox/netbox/media:rw
-      - /share/Container/netbox/reports:/opt/netbox/netbox/reports:rw
-      - /share/Container/netbox/scripts:/opt/netbox/netbox/scripts:rw
-
-  netbox-worker:
-    image: docker.io/netboxcommunity/netbox:v4.4-3.4.1
-    container_name: netbox-worker
-    command:
-      - /opt/netbox/venv/bin/python
-      - /opt/netbox/netbox/manage.py
-      - rqworker
-    env_file:
-      - env/netbox.env
-    healthcheck:
-      test: ps aux | grep -v grep | grep -q rqworker || exit 1
-      start_period: 60s
-      interval: 30s
-      timeout: 5s
-      retries: 5
+      - netbox-postgres-data:/var/lib/postgresql/data
     networks:
       Vlan1:
         ipv4_address: 172.31.240.61
 
-  postgres:
-    image: docker.io/postgres:16-alpine
-    container_name: netbox-postgres
-    env_file:
-      - env/postgres.env
-    healthcheck:
-      test: pg_isready -q -t 2 -d $$POSTGRES_DB -U $$POSTGRES_USER
-      start_period: 30s
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  redis:
+    image: docker.io/redis:7
+    container_name: netbox-redis
+    restart: unless-stopped
     volumes:
-      - /share/Container/netbox/postgres:/var/lib/postgresql/data
+      - netbox-redis-data:/data
     networks:
       Vlan1:
         ipv4_address: 172.31.240.60
 
-  redis:
-    image: docker.io/valkey/valkey:8.1-alpine
-    container_name: netbox-redis
-    env_file:
-      - env/redis.env
-    command: >
-      sh -c "valkey-server --appendonly yes --requirepass $$REDIS_PASSWORD"
-    healthcheck:
-      test: ["CMD-SHELL", "valkey-cli -a $$REDIS_PASSWORD ping | grep -q PONG"]
-      start_period: 10s
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    volumes:
-      - /share/Container/netbox/redis:/data
+  redis-cache:
+    image: docker.io/redis:7
+    container_name: netbox-redis-cache
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
     networks:
       Vlan1:
         ipv4_address: 172.31.240.59
 
-  redis-cache:
-    image: docker.io/valkey/valkey:8.1-alpine
-    container_name: netbox-redis-cache
+  netbox:
+    image: docker.io/netboxcommunity/netbox:v4.4-3.4.1
+    container_name: netbox
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+      - redis-cache
     env_file:
-      - env/redis-cache.env
-    command: >
-      sh -c "valkey-server --requirepass $$REDIS_PASSWORD"
-    healthcheck:
-      test: ["CMD-SHELL", "valkey-cli -a $$REDIS_PASSWORD ping | grep -q PONG"]
-      start_period: 10s
-      interval: 5s
-      timeout: 3s
-      retries: 5
+      - ./env/netbox.env
     volumes:
-      - /share/Container/netbox/redis-cache:/data
+      - netbox-media:/opt/netbox/netbox/media
+      - netbox-reports:/opt/netbox/netbox/reports
+      - netbox-scripts:/opt/netbox/netbox/scripts
     networks:
       Vlan1:
-        ipv4_address: 172.31.240.58
+        ipv4_address: 172.31.240.62
 
 networks:
   Vlan1:
     external: true
+
+volumes:
+  netbox-postgres-data:
+  netbox-redis-data:
+  netbox-media:
+  netbox-reports:
+  netbox-scripts:
