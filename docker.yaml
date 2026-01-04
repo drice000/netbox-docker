@@ -33,9 +33,6 @@ services:
   netbox-worker:
     image: docker.io/netboxcommunity/netbox:v4.4-3.4.1
     container_name: netbox-worker
-    depends_on:
-      netbox:
-        condition: service_healthy
     command:
       - /opt/netbox/venv/bin/python
       - /opt/netbox/netbox/manage.py
