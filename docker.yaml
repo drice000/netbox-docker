@@ -27,8 +27,6 @@ services:
       - /share/Container/netbox/media:/opt/netbox/netbox/media:rw
       - /share/Container/netbox/reports:/opt/netbox/netbox/reports:rw
       - /share/Container/netbox/scripts:/opt/netbox/netbox/scripts:rw
-    ports:
-      - "8080:8080"
 
   netbox-worker:
     image: docker.io/netboxcommunity/netbox:v4.4-3.4.1
