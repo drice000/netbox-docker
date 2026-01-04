@@ -8,6 +8,11 @@ services:
       - redis
       - redis-cache
     env_file: env/netbox.env
+    healthcheck:
+      test: curl -f http://localhost:8080/login/ || exit 1
+      start_period: 90s
+      timeout: 3s
+      interval: 15s
     networks:
       Vlan1:
         ipv4_address: 172.31.240.60
@@ -21,7 +26,8 @@ services:
   netbox-worker:
     <<: *netbox
     depends_on:
-      netbox
+      netbox:
+        condition: service_healthy
     command:
       - /opt/netbox/venv/bin/python
       - /opt/netbox/netbox/manage.py
