@@ -5,12 +5,10 @@ services:
     image: docker.io/postgres:15
     container_name: netbox-postgres
     restart: unless-stopped
-    environment:
-      POSTGRES_DB: netbox
-      POSTGRES_USER: netbox
-      POSTGRES_PASSWORD: netbox
+    env_file:
+      - ./env/postgres.env
     volumes:
-      - netbox-postgres-data:/var/lib/postgresql/data
+      - /share/Container/netbox/postgres:/var/lib/postgresql/data
     networks:
       Vlan1:
         ipv4_address: 172.31.240.61
@@ -19,8 +17,10 @@ services:
     image: docker.io/redis:7
     container_name: netbox-redis
     restart: unless-stopped
+    env_file:
+      - ./env/redis.env
     volumes:
-      - netbox-redis-data:/data
+      - /share/Container/netbox/redis:/data
     networks:
       Vlan1:
         ipv4_address: 172.31.240.60
@@ -29,7 +29,11 @@ services:
     image: docker.io/redis:7
     container_name: netbox-redis-cache
     restart: unless-stopped
+    env_file:
+      - ./env/redis-cache.env
     command: ["redis-server", "--save", "", "--appendonly", "no"]
+    volumes:
+      - /share/Container/netbox/redis-cache:/data
     networks:
       Vlan1:
         ipv4_address: 172.31.240.59
@@ -45,9 +49,10 @@ services:
     env_file:
       - ./env/netbox.env
     volumes:
-      - netbox-media:/opt/netbox/netbox/media
-      - netbox-reports:/opt/netbox/netbox/reports
-      - netbox-scripts:/opt/netbox/netbox/scripts
+      - /share/Container/netbox/media:/opt/netbox/netbox/media
+      - /share/Container/netbox/reports:/opt/netbox/netbox/reports
+      - /share/Container/netbox/scripts:/opt/netbox/netbox/scripts
+      - /share/Container/netbox/configuration:/etc/netbox/config:rw
     networks:
       Vlan1:
         ipv4_address: 172.31.240.62
@@ -55,10 +60,3 @@ services:
 networks:
   Vlan1:
     external: true
-
-volumes:
-  netbox-postgres-data:
-  netbox-redis-data:
-  netbox-media:
-  netbox-reports:
-  netbox-scripts:
