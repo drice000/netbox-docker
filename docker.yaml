@@ -15,9 +15,7 @@ services:
   redis:
     image: docker.io/redis:7
     restart: unless-stopped
-    env_file:
-      - ./env/redis.env
-    command: ["sh", "-c", "redis-server --requirepass \"$REDIS_PASSWORD\" --appendonly yes"]
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "H733Kdjndks81"]
     volumes:
       - /share/Container/netbox/redis:/data
     networks:
@@ -27,9 +25,7 @@ services:
   redis-cache:
     image: docker.io/redis:7
     restart: unless-stopped
-    env_file:
-      - ./env/redis-cache.env
-    command: ["sh", "-c", "redis-server --requirepass \"$REDIS_PASSWORD\""]
+    command: ["redis-server", "--requirepass", "t4Ph722qJ5QHeQ1qfu36"]
     volumes:
       - /share/Container/netbox/redis-cache:/data
     networks:
