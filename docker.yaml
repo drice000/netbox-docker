@@ -102,4 +102,11 @@ services:
       timeout: 3s
       retries: 5
     volumes:
-      - /share/Container/ne
+      - /share/Container/netbox/redis-cache:/data
+    networks:
+      Vlan1:
+        ipv4_address: 172.31.240.64
+
+networks:
+  Vlan1:
+    external: true
